@@ -1,2 +1,26 @@
 
-reflex==0.8.24.post1
+#ubuntu需要unzip
+reflex  # 【可随意最新】
+psycopg2    #ubuntu需要先在系统里安装 sudo apt install libpq-dev  MacOS改用psycopg2-binary 【可随意最新】
+alibabacloud_dysmsapi20170525==3.1.0    #短信
+uuid7   #数据库主键用uuid7    【可随意最新】
+# 【不可用】reflex-ag-grid  reflex7.0之后就不支持了，只能用企业版的reflex
+#aliyun-python-sdk-core-v3   #阿里云视频点播    上传
+#aliyun-python-sdk-vod       #阿里云视频点播    上传
+#alibabacloud_vod20170321    #阿里云视频点播    获取上传凭证
+#MacOS httpx[http2]    zsh的MacOS用 httpx\[http2\]
+#ARM版的MacOS 终端执行 ：/usr/sbin/softwareupdate --install-rosetta --agree-to-license
+#reflex-calendar #日历  约时间系统使用    【可随意最新】
+#zhipuai #AI的API 【可随意最新】
+#aioredis    # 异步redis   【可随意最新】
+#hiredis     # 异步redis的加速库   【可随意最新】
+#pandas  # 数据处理，现在用在组织信息与个人信息的归类展示上  【可随意最新】
+#alipay-sdk-python   # 支付宝相关     实人认证使用  【可随意更新】
+#reflex-qrcode   # 二维码    实人认证用  【可随意最新】
+#reflex-lottiefiles  # 动画    海报用   【可随意最新】
+#reflex-suneditor    # 文本编辑器     海报用     【可随意最新】
+#alibabacloud_credentials    # 管理阿里云凭据   【可随意最新】
+#mypy    # 插件需要安装    【可随意最新】
+#reflex-enterprise   # 【未启用】企业版reflex，包含正在更新的ag-grid     【可随意最新】
+
+
