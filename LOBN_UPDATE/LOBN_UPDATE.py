@@ -3,7 +3,11 @@ import reflex as rx
 
 from rxconfig import config
 
-
+from LOBN_UPDATE.public_function import load_config_from_db
+from LOBN_UPDATE.pages import index, test
+from LOBN_UPDATE.pages.account import login
+from LOBN_UPDATE.pages.background import setting
+from LOBN_UPDATE.state_on_load_in_page import on_load_in_page_login, on_load_in_page_setting
 
 app = rx.App(   #配置文件位于：reflex.app.App
     #theme=THEME,
@@ -21,16 +25,19 @@ app = rx.App(   #配置文件位于：reflex.app.App
 
 
 # region 下面是注册页面
-#app.add_page(index.index, route="/", title='大纳网', on_load=state_on_load_in_page.on_load_in_page_index)  # 首页虽然对外展示，但不是产品，所以不要动态路由    屏蔽此页面   现在真正的首页是ai_chat, 这个首页原来设想的更多的是铺满信息的情况下用。改为了ai引导为主的话就用ai_chat做首页
+app.add_page(index.index, route="/", title='鲁班更新')  # 首页 纯静态
+
+
 
 #app.add_page(ai_chat.ai_chat, route="/ai", title="大纳网", on_load=state_on_load_in_page.on_load_in_page_index)  # Ai对话
 #app.add_page(base_index2.base_index2, route="/", title='大纳网', on_load=state_on_load_in_page.on_load_in_page_base_index2)  # 首页虽然对外展示，但不是产品，所以不要动态路由    屏蔽此页面   现在真正的首页是ai_chat, 这个首页原来设想的更多的是铺满信息的情况下用。改为了ai引导为主的话就用ai_chat做首页
     # region 页面-管理
+app.add_page(setting.setting, route="/setting", title="管理-设置", on_load=state_on_load_in_page.on_load_in_page_setting)  # 设置
 #app.add_page(set_business.set_business, route="/set_business", title="管理-设置业务")  # 设置业务
 #app.add_page(pub_poster.pub_poster, route="/pub_poster", title="管理-发布海报")  # 发布海报
     # endregion
     # region 页面-账户
-#app.add_page(login.login, route="/login", title="登录", on_load=state_on_load_in_page.on_load_in_page_login)   #登录
+app.add_page(login.login, route="/login", title="登录", on_load=state_on_load_in_page.on_load_in_page_login)   #登录
 #app.add_page(account_space.account_space, route="/account/space/[route_user_uuid]", title="个人空间", on_load=state_on_load_in_page.on_load_in_page_user_space)  # 用户空间
 #app.add_page(account_setting.account_setting, route="/account/setting", title="个人设置", on_load=state_on_load_in_page.on_load_in_page_user_setting)  # 用户设置
 #app.add_page(account_recover.account_recover, route="/account/recover", title="找回账号")  # 找回账号
@@ -70,7 +77,7 @@ app = rx.App(   #配置文件位于：reflex.app.App
 #app.add_page(base_vip_dash_board.base_vip_dash_board, route="/vip_dash_board", title="会员仪表盘", on_load=state_on_load_in_page.on_load_in_page_base_vip_dash_board)     # 会员仪表盘
         # endregion
     # endregion
-#app.add_page(test.test, route="/test", title="测试")  # 测试
+app.add_page(test.test, route="/test", title="测试")  # 测试
 # app.add_page(test_enterprise.test_enterprise, route="/test_enterprise", title="测试企业版本功能")  # 测试企业版本功能
 
 # endregion
@@ -93,7 +100,7 @@ app = rx.App(   #配置文件位于：reflex.app.App
 # endregion
 
 # region下面是注册生命周期任务
-# 【暂时没有需要redis的应用】【约时间改成了后台任务】app.register_lifespan_task(rxconfig.REDIS.activate_redis_pubsub)  # 激活redis，创建一个redis实例，用于消息推送。
+app.register_lifespan_task(load_config_from_db)  # 定时从数据库加载配置到python变量，以供用户加载/刷新页面时高效查询。
 # endregion
 
 

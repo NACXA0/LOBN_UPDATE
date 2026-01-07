@@ -94,12 +94,29 @@ privilege_select    (权限配置)【可改进】以后可以改为子表，做�
 '''
 
 # ----------------------------------------------------------------------------------------
+
+
+'''
+通用界面配置表
+这里存储页面的公共配置数据，前端每次加载和后台修改配置都触发查询。
+极高频读，极低频写。
+'''
+class page_config(SQLModel, table=True):
+    __table_args__ = {"schema": "public"}  # 必须
+    __table_name__ = "page_config"  # 必须
+    # 下面是需要的列   必须
+    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 页面的uuid
+    data: dict = Field(default=None, sa_type=JSON)  # 页面配置，jsonb格式存储    
+    page_name: str = Field(unique=True)  # 页面名称，唯一约束. 不强制，更多是为了方便查询，每个页面都要有唯一的uuid
+    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")) # 此配置的创建时间
+    create_user: str = # 创建词条数据的人
+
+
+
 # region 用户表
 '''
 用户表
 '''
-
-
 class user(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "user"  # 必须
@@ -111,24 +128,133 @@ class user(SQLModel, table=True):
     create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
     last_login_date: str  # 最后登录时间
     level: int = Field(default=0)  # 个人VIP等级   0为无vip
-    privilege_level: int = Field(default=10)  # 用户等级   直接代表实际权限    10为正常  0为禁用但保留  其他见readme.md
     privilege_select: dict = Field(default=rxconfig.user.default_user_signin_privilege_select, sa_type=JSON)  # 权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
     real_man_verify_info: dict = Field(default=None, sa_type=JSON)  # 实人认证信息 {'name':'姓名str(加盐密码A)', 'id_card_number':'身份证号str(加盐密码B)'}
 
 
-
 '''
-配置表
-这里存储页面的公共配置数据，前端每次加载和后台修改配置都触发查询。
-极高频读，极低频写。
+用户登录历史记录
+只做存档，没有功能 ！只写入，不修改
+action行为：登录为True；注销为False
 '''
-class page_config(SQLModel, table=True):
+class user_login_history(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
-    __table_name__ = "page_config"  # 必须
+    __table_name__ = "user_login_history"  # 必须
     # 下面是需要的列   必须
     uuid: str = Field(default_factory=uuid7, primary_key=True)
-    data: dict = Field(default=None, sa_type=JSON)  # 页面配置，jsonb格式存储    
-    page_name: str = Field(unique=True)  # 页面名称，唯一约束. 不强制，更多是为了方便查询，每个页面都要有唯一的uuid
+    user_uuid: str  #用户uuid
+    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    action: bool    #用户行为：登录为True；注销为False
+    ip: str    #IP地址
+
+
+
+
+# region 组织表
+'''
+组织表——如：基地、企业、院校的统称。
+
+config:
+    身份加入组织时是否需要申请:
+    # 【被org2identity_type_name的第一个参数等效代替】 default_signup_org2identity_type_name   默认身份注册到组织时，身份在组织中的岗位的名称。【应为org2identity_type_name已存在的名称】
+'''
+class org(SQLModel, table=True):
+    __table_args__ = {"schema": "public"}  # 必须
+    __table_name__ = "org"  # 必须
+    # 下面是需要的列   必须
+    uuid: str = Field(default_factory=uuid7, primary_key=True)
+    org_type: str  # 组织类型  基本类型: 基地(base)、企业(company)、院校(school)  附属类型:班级(class)
+    url_name: str = Field(default=None, unique=True) #【唯一】【可选】 url别名，如果设置了，可以通过别名访问。含义与uuid相同，是更简单的方法，去别的别名可以更改，面向啊你给外部，而uuid不可更改，面向内部。
+    extra_data_uuid: str  # 附加字段表的数据的uuid
+    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    last_login_date: str    # 最后管理员登录时间
+    owner_user_uuid: str  # 拥有此组织的用户的uuid（确定且唯一）
+    super_admin_user_uuid: str  # 超管用户的uuid（确定且唯一）
+    name: str
+    level: int = Field(default=0)   # 组织的vip等级   0为无vip
+    privilege_select: dict = Field(default={}, sa_type=JSON)  # 同一职位内部的权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
+    new_message_uuid: List[str] = Field(sa_column=Column(ARRAY(Text)))  # 未读的私信
+    plug_component_foreach: list = Field(sa_type=JSON, default=[])  # 插件名称及其排版——用于foreach  这里的 default=[] foreach需要数组
+    WebPageSet_index: dict = Field(sa_type=JSONB)   # 【需要改动】组织首页页面设置
+    tip: str  # 说明（详细简介）——展示在详细信息
+    slogan: str  # 标语——简要简介（一句话）——展示在组织卡片中
+    affiliated_org_tag: dict = Field(default=None, sa_type=JSON)    # 附属组织的标签分类结构 {'一级分类1': {uuid:'', 'description': '描述', 'children': ['二级分类1':'']}， '一级分类2':{uuid:'', 'description': '描述', 'children': }}     1. 为什么仍需要uuid: 全局唯一性，使得上下级组织关系表可以遍历索引。2。为什么不用后面将uuid放到前面的方式: 名称作为键，利用字典键唯一的属性防止标签名重复  {uuid: {'description': '描述-一级分类1', 'children': [uuid:{'description': '描述-二级分类1', 'children': {}}]}， uuid:{'description': '描述-一级分类2', 'children': {}}}
+    config: dict = Field(default={}, sa_type=JSON) # 设置。组织的设置信息。   与privilege_select不同，这里更由组织自己控制。
+    config_org2identity_type_name: List[str] = Field(default=rxconfig.config_org_identity.org2identity_type_list, sa_column=Column(ARRAY(Text)))  # 配置的身份在组织中的岗位名称，这个太常用所以单独一个字段。
+
+
+'''
+组织与身份的关联表——身份在组织中的注册信息
+'''
+class org_map_org2identity(SQLModel, table=True):
+    __table_args__ = {"schema": "public"}  # 必须
+    __table_name__ = "org_map_org2identity"  # 必须
+    # 下面是需要的列   必须
+    org_uuid: str = Field(default=None, foreign_key="public.org.uuid", primary_key=True)    # 组织的uuid
+    identity_uuid: str = Field(default=None, foreign_key="public.identity.uuid", primary_key=True)  # 身份uuid
+    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    last_login_date: str  # 最后登录时间
+    level: int = Field(default=0)  # 【正整数】当前此组织的身份的vip等级   0为无vip
+    type: str = Field(default='')   # 身份在组织内的的特殊职位列表,  是组织对身份的定义。
+    privilege_level: int = Field(default=10)    # 用户等级   直接代表实际权限    10为正常  0为禁用但保留 其他见readme.md
+    privilege_select: dict = Field(default={}, sa_type=JSON)  # 同一职位内部的权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
+    name: str   # 名称(主要用于展示)
+    tip: str = Field(default='')    # 说明 一般是等于身份的名称
+    WebPageSet_space: dict = Field(sa_type=JSON)   # 个人主页设置
+    tag_in_org: List[str] = Field(sa_column=Column(ARRAY(Text))) # 身份在组织中的标签 用于组织对组织内的人员管理   如：班级A、小组B
+    money: Decimal = Field(default=0, decimal_places=0) # 积分——仅限此身份注册信息在此组织中使用
+
+'''
+中间表: 组织之间的上下级关系
+'''
+class org_map_relation(SQLModel, table=True):
+    __table_args__ = {"schema": "public"}  # 必须
+    __table_name__ = "org_map_relation"  # 必须
+    # 下面是需要的列   必须
+    master_org_uuid: str = Field(default=None, foreign_key="public.org.uuid", primary_key=True)    # 上级组织的uuid
+    slave_org_uuid: str = Field(default=None, foreign_key="public.org.uuid", primary_key=True)  # 下级组织的uuid
+    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    privilege_select: dict = Field(default={}, sa_type=JSON)  # 权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
+    #【停用，可能与tag_for_slave_org冲突】type: str   # 下级的职位类型，对于上级而言的
+    tag_for_slave_org: List[str] = Field(sa_column=Column(ARRAY(Text)))  # 上级对下级的标签  存储org标签分类中的uuid， 如果找不到对应的分类(数据一致性错误)说明上级组织已经删除了此标签，则不显示标签。
+    tag_for_master_org: List[str] = Field(sa_column=Column(ARRAY(Text)))  # 下级对上级的标签 这个是比较独立的，与上级组织无关。存储标签字符串列表['标签1', '标签2']
+    tip: str  # 说明（详细简介）
+    slogan: str  # 标语——简要简介（一句话）
+
+
+
+# region 身份表——合师与会员、运维(管理)、助教等等各种身份，包含身份附加字段，如果需要。
+'''
+身份表：用户与身份 的关系映射表  一对多
+对于不同身份的特异话：用外键join进来
+更改：身份属于自然人，与用户一样样是自然人，身份与用户是一对多的关系，一个用户可以具有很多身份，但一个身份只能对应一个用户（如果要转移用户资产则需要转移数据（不常用））。
+如果用户注销了此身份，但仍有资产：资产所有者变更为系统暂存。
+如果用户建立了新账号：用什么方法将资产转移过去。
+多账号共有一个身份的资产：不支持。只可以有一个资产所有者和多个资产管理员（防止资产纠纷）
+- privilege_select解释
+    'web_privilege': None  网站系统权限类型，默认是没有网站系统管理权
+
+'''
+class identity(SQLModel, table=True):
+    __table_args__ = {"schema": "public"}  # 必须
+    __table_name__ = "identity"  # 必须
+    # 下面是需要的列   必须
+    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 此关系本身的uuid
+    type: str  # 身份类型     管理(admin),运维(service)教师(teacher),学生(vip)       对于网站系统而言
+    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    last_login_date: str  # 最后登录时间
+    user_uuid: str = Field(default=None, foreign_key="public.user.uuid")    # 用户的uuid
+    name: str
+    level: int = Field(default=0)   # vip等级   0为无vip
+    privilege_select: dict = Field(default={}, sa_type=JSON)  # 此身份的基础权限配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
+    tip: str = Field(default='')    # 说明 一般是等于name
+    slogan: str  # 标语——简要简介（一句话）——展示在身份卡片中
+
+
 
 
 
