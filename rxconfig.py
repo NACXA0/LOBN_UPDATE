@@ -84,7 +84,6 @@ class REDIS:  # 用大写防止与redis包重名
 
 
 
-
 config = rx.Config(
     app_name="LOBN_UPDATE", # 应用的名称（应与应用目录匹配）
     show_built_with_reflex=False,  # 不显示reflex标签  需要订阅团队，否则修改底层 秘密

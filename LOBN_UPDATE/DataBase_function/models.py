@@ -26,7 +26,7 @@ class 这个实例化的模块的命名(SQLModel, table=True):
     org_base: List[str] = Field(default=None, sa_column=Column(ARRAY(String())))  # 数组内含字符串的映射方法
     一对多中的多: str = Field(default=None, foreign_key="表名.字段")  # 外键：一对多  （多对多使用关联表）  问题：如果外键关联的表，取决于关联表里的另一个字段（通过类型字段判断这个id是哪张表里的id），这个就有点复杂了
     jsonb: dict = Field(default=None, sa_type=JSON)  # jsonb格式的数据 {'name':'姓名str(加盐密码A)', 'id_card':'身份证号str(加盐密码B)'}
-    phone_number: str = Field(unique=True)  # 唯一约束，使得此字段数据不能有重复（允许多个null值）
+    phone_number: str = Field(unique=True, nullable=False)  # 唯一约束，使得此字段数据不能有重复（允许多个null值）、非空(如果定义了外键则不用显示写nullable=False，因为外键默认非空)
     示例表2属性名: list["示例表2"] = Relationship(back_populates="示例表1属性名")  # 关系：# 单向关系则不需要back_populates    # List["对方表"] 【注意引号】 对方表是“多”， 对方有多个对应结果， 用    List["对方表名"]
 
 
@@ -107,10 +107,10 @@ class page_config(SQLModel, table=True):
     # 下面是需要的列   必须
     uuid: str = Field(default_factory=uuid7, primary_key=True)  # 页面的uuid
     data: dict = Field(default=None, sa_type=JSON)  # 页面配置，jsonb格式存储    
-    page_name: str = Field(unique=True)  # 页面名称，唯一约束. 不强制，更多是为了方便查询，每个页面都要有唯一的uuid
     create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")) # 此配置的创建时间
-    create_user: str = # 创建词条数据的人
-
+    create_user_uuid: str = Field(default=None, foreign_key="public.user.uuid")    # 创建词条数据的人的uuid，只有管理员才能操作，管理员有确切的账户uuid。
+    tip: str = Field(unique=True)  # 提示-通常是页面名称，唯一约束. 不强制，更多是为了方便查询，每个页面都要有唯一的uuid
+    
 
 
 # region 用户表
@@ -157,6 +157,8 @@ class user_login_history(SQLModel, table=True):
 config:
     身份加入组织时是否需要申请:
     # 【被org2identity_type_name的第一个参数等效代替】 default_signup_org2identity_type_name   默认身份注册到组织时，身份在组织中的岗位的名称。【应为org2identity_type_name已存在的名称】
+去除：extra_data_uuid: str  # 附加字段表的数据的uuid
+    附加字段依靠于org，的外键是org.uuid,而不是反过来。
 '''
 class org(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
@@ -165,12 +167,11 @@ class org(SQLModel, table=True):
     uuid: str = Field(default_factory=uuid7, primary_key=True)
     org_type: str  # 组织类型  基本类型: 基地(base)、企业(company)、院校(school)  附属类型:班级(class)
     url_name: str = Field(default=None, unique=True) #【唯一】【可选】 url别名，如果设置了，可以通过别名访问。含义与uuid相同，是更简单的方法，去别的别名可以更改，面向啊你给外部，而uuid不可更改，面向内部。
-    extra_data_uuid: str  # 附加字段表的数据的uuid
     create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
     change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
     last_login_date: str    # 最后管理员登录时间
-    owner_user_uuid: str  # 拥有此组织的用户的uuid（确定且唯一）
-    super_admin_user_uuid: str  # 超管用户的uuid（确定且唯一）
+    owner_identity_uuid: str = Field(foreign_key="public.identity.uuid")  # 拥有此组织的身份的uuid（确定且唯一）
+    super_admin_identity_uuid: str= Field(foreign_key="public.identity.uuid")  # 超管身份的uuid（确定且唯一）
     name: str
     level: int = Field(default=0)   # 组织的vip等级   0为无vip
     privilege_select: dict = Field(default={}, sa_type=JSON)  # 同一职位内部的权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
@@ -181,7 +182,7 @@ class org(SQLModel, table=True):
     slogan: str  # 标语——简要简介（一句话）——展示在组织卡片中
     affiliated_org_tag: dict = Field(default=None, sa_type=JSON)    # 附属组织的标签分类结构 {'一级分类1': {uuid:'', 'description': '描述', 'children': ['二级分类1':'']}， '一级分类2':{uuid:'', 'description': '描述', 'children': }}     1. 为什么仍需要uuid: 全局唯一性，使得上下级组织关系表可以遍历索引。2。为什么不用后面将uuid放到前面的方式: 名称作为键，利用字典键唯一的属性防止标签名重复  {uuid: {'description': '描述-一级分类1', 'children': [uuid:{'description': '描述-二级分类1', 'children': {}}]}， uuid:{'description': '描述-一级分类2', 'children': {}}}
     config: dict = Field(default={}, sa_type=JSON) # 设置。组织的设置信息。   与privilege_select不同，这里更由组织自己控制。
-    config_org2identity_type_name: List[str] = Field(default=rxconfig.config_org_identity.org2identity_type_list, sa_column=Column(ARRAY(Text)))  # 配置的身份在组织中的岗位名称，这个太常用所以单独一个字段。
+    # 【不太确定，已经有了身份，岗位还有什么用？】config_org2identity_type_name: str  # 配置的身份在组织中的岗位名称，这个太常用所以单独一个字段。
 
 
 '''
@@ -197,36 +198,33 @@ class org_map_org2identity(SQLModel, table=True):
     change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
     last_login_date: str  # 最后登录时间
     level: int = Field(default=0)  # 【正整数】当前此组织的身份的vip等级   0为无vip
-    type: str = Field(default='')   # 身份在组织内的的特殊职位列表,  是组织对身份的定义。
-    privilege_level: int = Field(default=10)    # 用户等级   直接代表实际权限    10为正常  0为禁用但保留 其他见readme.md
+    identity_type: str = Field(default='')   # 身份在组织内的的特殊职位列表,  是组织对身份的定义。
     privilege_select: dict = Field(default={}, sa_type=JSON)  # 同一职位内部的权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
     name: str   # 名称(主要用于展示)
     tip: str = Field(default='')    # 说明 一般是等于身份的名称
-    WebPageSet_space: dict = Field(sa_type=JSON)   # 个人主页设置
+    WebPageSet_index: dict = Field(sa_type=JSON)   # 个人主页设置
     tag_in_org: List[str] = Field(sa_column=Column(ARRAY(Text))) # 身份在组织中的标签 用于组织对组织内的人员管理   如：班级A、小组B
     money: Decimal = Field(default=0, decimal_places=0) # 积分——仅限此身份注册信息在此组织中使用
 
 '''
-中间表: 组织之间的上下级关系
-'''
+【暂停】中间表: 组织之间的上下级关系 **现在有一个json表示整体架构就可以了，暂时不考虑多个上级的复杂情况**
+以树形关系为基本结构。一个上级有多个下级。
+对于一个下级需要多个上级的情况，则另外建立数据行表示二者的上下级关系。
 class org_map_relation(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "org_map_relation"  # 必须
     # 下面是需要的列   必须
-    master_org_uuid: str = Field(default=None, foreign_key="public.org.uuid", primary_key=True)    # 上级组织的uuid
-    slave_org_uuid: str = Field(default=None, foreign_key="public.org.uuid", primary_key=True)  # 下级组织的uuid
+    uuid: str
     create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
     change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
-    privilege_select: dict = Field(default={}, sa_type=JSON)  # 权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
-    #【停用，可能与tag_for_slave_org冲突】type: str   # 下级的职位类型，对于上级而言的
-    tag_for_slave_org: List[str] = Field(sa_column=Column(ARRAY(Text)))  # 上级对下级的标签  存储org标签分类中的uuid， 如果找不到对应的分类(数据一致性错误)说明上级组织已经删除了此标签，则不显示标签。
-    tag_for_master_org: List[str] = Field(sa_column=Column(ARRAY(Text)))  # 下级对上级的标签 这个是比较独立的，与上级组织无关。存储标签字符串列表['标签1', '标签2']
+    base_privilege_select: dict = Field(default={}, sa_type=JSON)  # 权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
+    data: dict = Field(default=None, sa_type=JSON)  # 组织数据
     tip: str  # 说明（详细简介）
     slogan: str  # 标语——简要简介（一句话）
+    base_org_uuid: str = Field(default=None, foreign_key="public.org.uuid", primary_key=True)    # 根组织的uuid，便于快速查询
+'''
 
 
-
-# region 身份表——合师与会员、运维(管理)、助教等等各种身份，包含身份附加字段，如果需要。
 '''
 身份表：用户与身份 的关系映射表  一对多
 对于不同身份的特异话：用外键join进来
@@ -237,17 +235,18 @@ class org_map_relation(SQLModel, table=True):
 - privilege_select解释
     'web_privilege': None  网站系统权限类型，默认是没有网站系统管理权
 
+【以后再做】* 版本控制：当身份对应的用户变更时要留下变更记录
 '''
 class identity(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "identity"  # 必须
     # 下面是需要的列   必须
     uuid: str = Field(default_factory=uuid7, primary_key=True)  # 此关系本身的uuid
-    type: str  # 身份类型     管理(admin),运维(service)教师(teacher),学生(vip)       对于网站系统而言
+    identity_type: str  # 身份类型     管理(admin),运维(service)教师(teacher),学生(vip)       对于网站系统而言
     create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
     change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
     last_login_date: str  # 最后登录时间
-    user_uuid: str = Field(default=None, foreign_key="public.user.uuid")    # 用户的uuid
+    user_uuid: str = Field(foreign_key="public.user.uuid")    # 用户的uuid
     name: str
     level: int = Field(default=0)   # vip等级   0为无vip
     privilege_select: dict = Field(default={}, sa_type=JSON)  # 此身份的基础权限配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
