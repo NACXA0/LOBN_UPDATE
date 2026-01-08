@@ -23,10 +23,10 @@ from .DataBase_function.database import engine
 
 # region 公共变量
 
-# 下面是页面配置的公共变量
-page_config_index = {}   # 首页的配置
-page_config_login = {}   # 登录页的配置
-
+    # region 下面是页面配置的公共变量
+page_config_index: dict = {}   # 首页的配置
+page_config_login: dict = {}   # 登录页的配置
+    # endregion
 # endregion
 
 
@@ -35,7 +35,7 @@ page_config_login = {}   # 登录页的配置
 # 下面是公共函数
 
 # 生命周期任务-定时查询配置文件数据库->写入python程序变量
-def load_config_from_db(db_connection):
+def load_page_config_from_db(db_connection):
     while True:
         # 查询配置文件数据库
         print('占位-查询一次数据库')
@@ -43,7 +43,15 @@ def load_config_from_db(db_connection):
         print('占位-一条数据是一个页面配置的json-将所有的配置数据行写入到对应页面的python变量中')
         time.sleep(rxconfig.freq_of_get_ui_config)  # 每几秒查询一次
 
-
+# 生命周期任务-定时查询系统配置数据库->写入python程序变量
+# 直接写入到rxconfig中
+def load_system_config_from_db(db_connection):
+    while True:
+        # 查询系统配置数据库
+        print('占位-查询一次系统配置数据库')
+        # 写入python变量
+        print('占位-将系统配置数据行写入到对应的python变量中')
+        time.sleep(rxconfig.freq_of_get_system_config)  # 每几秒查询一次
 
 
 

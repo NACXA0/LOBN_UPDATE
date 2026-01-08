@@ -95,21 +95,59 @@ privilege_select    (权限配置)【可改进】以后可以改为子表，做�
 
 # ----------------------------------------------------------------------------------------
 
+'''
+通用系统配置表
+这里存储系统的全局配置数据、网站运行逻辑等。比如开关开发者模式、底层条件频率限制、
+与网站的运行逻辑有关，使得可以在后台配置网站的运行方式。
+极高频读，极低频写。
+逐渐就是name，name直接与配置的结构对应，中间用 - 连接
+*【以后再做】需要审计-需要记录历史操作记录（现在只是新增，找同一位置(uuid)下最新的）
+'''
+class sys_config(SQLModel, table=True):
+    __table_args__ = {"schema": "public"}  # 必须
+    __table_name__ = "sys_config"  # 必须
+    # 下面是需要的列   必须
+    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 配置项的uuid
+    value: str  # 配置项的值
+    value_type: str = Field(default='str')  # 配置项的值的数据类型说明，比如bool、int、str、dict等,用于在应用层进行转换。
+    name: str = Field(unique=True)  # 此配置的类别，用作分类，主要起到说明指示作用，底层只使用uuid。另外有uuid与配置位置的对照表。
+    tip: str  # 提示——说明此配置项的作用
+    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    create_user_uuid: str = Field(default=None, foreign_key="public.user.uuid")    # 创建词条数据的人的uuid，只有管理员才能操作，管理员有确切的账户uuid。
+    
+
 
 '''
 通用界面配置表
 这里存储页面的公共配置数据，前端每次加载和后台修改配置都触发查询。
 极高频读，极低频写。
+*【以后再做】需要审计-需要记录历史操作记录（现在只是新增，找同一位置(uuid)下最新的）
 '''
 class page_config(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "page_config"  # 必须
     # 下面是需要的列   必须
-    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 页面的uuid
-    data: dict = Field(default=None, sa_type=JSON)  # 页面配置，jsonb格式存储    
+    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 页面的uuid。主要起到说明指示作用，底层只使用uuid。另外有uuid与页面位置的对照表。
+    value: dict = Field(default=None, sa_type=JSON)  # 页面配置，jsonb格式存储    
     create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")) # 此配置的创建时间
     create_user_uuid: str = Field(default=None, foreign_key="public.user.uuid")    # 创建词条数据的人的uuid，只有管理员才能操作，管理员有确切的账户uuid。
     tip: str = Field(unique=True)  # 提示-通常是页面名称，唯一约束. 不强制，更多是为了方便查询，每个页面都要有唯一的uuid
+
+'''
+历史审计表-低频-管理员操作
+将所有的数据都合为一条json。    让原始表只存储几乎最新的数据。
+定期修剪原始表：定期将原始表的数据归档到此表中。    而不是同步修改。 定时/管理员主动触发。
+仅限低频：如：页面配置、系统配置等。
+高频数据不适合：如业务运作。高频要用专门的历史表
+'''
+class history(SQLModel, table=True):
+    __table_args__ = {"schema": "public"}  # 必须
+    __table_name__ = "history"  # 必须
+    # 下面是需要的列   必须
+    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 历史页面配置的uuid
+    value: dict = Field(sa_type=JSON)  # 页面配置，jsonb格式存储    
+    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")) # 归档时间
+
     
 
 
@@ -252,6 +290,7 @@ class identity(SQLModel, table=True):
     privilege_select: dict = Field(default={}, sa_type=JSON)  # 此身份的基础权限配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
     tip: str = Field(default='')    # 说明 一般是等于name
     slogan: str  # 标语——简要简介（一句话）——展示在身份卡片中
+
 
 
 

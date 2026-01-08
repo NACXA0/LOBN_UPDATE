@@ -26,6 +26,9 @@ class login:
         send_sms_freq = 3  #验证码短信发送频率（秒/个）【代转移】
         verify_code_effective_time = 300  # 验证码有效期（秒）【代转移】
 
+class user:
+    default_user_signin_privilege_select = {}  # 用户注册的默认权限配置
+
 class verify_code:
     send_sms_freq = 3  # 验证码短信发送频率（秒/个）
     verify_code_effective_time = 300  # 验证码有效期（秒）
