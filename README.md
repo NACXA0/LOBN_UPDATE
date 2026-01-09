@@ -150,6 +150,7 @@
   1. global_config  数据缓存-以后改为redis-om的模版，
   2. global_config_update_function  更新数据缓存的函数，通常是从数据糊获取数据，然后加入缓存
   3. global_config_instance  实例化的缓存，有长连接等非静态数据的“变量”。
+      - 有了专门的实例存储文件后，database的engine部分还是不要迁移过来了，这么多版本，他很稳定。
 - 缓存变量基本代码架构示例——用户主动刷新。    高频同步以后再说，还不知道怎么做。    redis缓存的方案以后需要多进程优化再考虑
     配置信息数据库->python全局变量->state.var
     - ``` python 前端设置+显示： 
