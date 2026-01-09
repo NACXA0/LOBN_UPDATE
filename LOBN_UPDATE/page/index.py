@@ -7,7 +7,7 @@ import reflex as rx
 
 def index() -> rx.Component:
     return rx.center(
-        rx.heading('欢迎来到首页')， 
+        rx.heading('欢迎来到首页'), 
         rx.link('登录', href='/login')
     )
 

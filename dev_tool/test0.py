@@ -1,5 +1,5 @@
-import rxconfig
-import uuid, itertools, time, datetime, random, ast, calendar, #redis, asyncio, queue
+# 
+import global_config, uuid, itertools, time, datetime, random, ast, calendar, #redis, asyncio, queue
 from typing import List, Union, Tuple, Callable, AsyncGenerator, Dict, Any
 from sqlmodel import Session, select, update, func, or_, outerjoin, and_, exists, not_
 from LOBN_UPDATE.DataBase_function.database import engine
@@ -280,7 +280,7 @@ async def redis_pub_sub():
     4. 用户在对应服务的实例中收到消息并解析消息内容。  （需要解析以及会包含不需要的信息，这效率确实不高，以后转为消息队列实现）
     '''
 
-    # 在服务器启动时创建实例【rxconfig里】
+    # 在服务器启动时创建实例【global_config里】
     pubsub_user = redis.asyncio.Redis.from_url("redis://localhost:6379")  # 用户用的实例
     pubsub_server = redis.asyncio.Redis.from_url("redis://localhost:6379")  # 服务器用滚动实例
 
@@ -357,7 +357,7 @@ async def redis_pub_sub():
 # redis 发布——用于测试系统内的订阅
 async def redis_pub():
     message = 'test_pub'
-    await rxconfig.REDIS.redis_client_pubsub_server.publish('0676d2d6-acc8-7abd-8000-114f9774296b',
+    await global_config.REDIS.redis_client_pubsub_server.publish('0676d2d6-acc8-7abd-8000-114f9774296b',
                                                             message)  # 向redis发布消息
 
 
@@ -541,7 +541,7 @@ def text_search_org_O2I_identity_by_user_groupby_org():
 
 
 # region 实人认证——跳转支付宝认证
-import uuid, logging, rxconfig, traceback
+import uuid, logging, traceback
 # h5人脸核身-第一步初始化用的
 from alipay.aop.api.domain.OpenCertifyIdentifyInfo import OpenCertifyIdentifyInfo
 from alipay.aop.api.domain.OpenCertifyMerchantConfigs import OpenCertifyMerchantConfigs
@@ -559,7 +559,7 @@ from alipay.aop.api.response.DatadigitalFincloudGeneralsaasFaceCertifyQueryRespo
 class real_man_verify():
     # 注意，有时候手机浏览器直接访问url会报错missing method, 只有将URL转为二维码，然后手机支付宝扫码才行。
     '''H5人脸核身
-    client是支付宝通用的初始化内容 在rxconfig里的alipay_client
+    client是支付宝通用的初始化内容 在global_config里的alipay_client
     使用方法：
         #第一步：获取认证ID
         function_First_Initialize(cert_name: str, cert_no: str, return_url: str) -> certify_id   #cert_name姓名, cert_no身份证, return_url认证完后跳转到哪个url   url要加上http://
@@ -616,9 +616,9 @@ class real_man_verify():
         # 支付宝网关（固定）
         alipay_client_config.server_url = 'https://openapi.alipay.com/gateway.do'
         # APPID 即创建应用后生成
-        alipay_client_config.app_id = rxconfig.pay.alipay.app_id
+        alipay_client_config.app_id = global_config.pay.alipay.app_id
         # AES秘钥,开放平台接口内容加密方式中获取
-        alipay_client_config.encrypt_key = rxconfig.pay.alipay.encrypt_key
+        alipay_client_config.encrypt_key = global_config.pay.alipay.encrypt_key
         # 接口加密方式,目前支持AES
         alipay_client_config.encrypt_type = 'AES'
         # 生成签名字符串所使用的签名算法类型，目前支持 RSA2 算法。
@@ -628,9 +628,9 @@ class real_man_verify():
         # 参数返回格式，只支持 JSON（固定）
         alipay_client_config.format = 'json'
         # 支付宝公钥
-        alipay_client_config.alipay_public_key = rxconfig.pay.alipay.alipay_public_key
+        alipay_client_config.alipay_public_key = global_config.pay.alipay.alipay_public_key
         # 开发者私钥，由开发者自己生成。格式:PKCS1
-        alipay_client_config.app_private_key = rxconfig.pay.alipay.app_private_key
+        alipay_client_config.app_private_key = global_config.pay.alipay.app_private_key
         client = DefaultAlipayClient(alipay_client_config=alipay_client_config, logger=logger)
         return client
     '''
@@ -768,7 +768,7 @@ class real_man_verify():
                 logging.error(response.code + "," + response.msg + "," + response.sub_code + "," + response.sub_msg)
 
     # 测试用例
-    #print(real_man_verify.First_Initialize(rxconfig.pay.alipay.alipay_client(),'姓名','身份证号'))
+    #print(real_man_verify.First_Initialize(global_config.pay.alipay.alipay_client(),'姓名','身份证号'))
 # endregion
 
 

@@ -1,13 +1,12 @@
 
 import reflex as rx
 
-from rxconfig import config
+import global_config_update_function
 
-from LOBN_UPDATE.public_function import load_config_from_db
-from LOBN_UPDATE.pages import index, test
-from LOBN_UPDATE.pages.account import login
-from LOBN_UPDATE.pages.background import setting
-from LOBN_UPDATE.state_on_load_in_page import on_load_in_page_login, on_load_in_page_setting
+from LOBN_UPDATE.page import index, test
+from LOBN_UPDATE.page.account import login
+from LOBN_UPDATE.page.background import setting
+from LOBN_UPDATE.public_on_load import state_on_load_in_page
 
 app = rx.App(   #配置文件位于：reflex.app.App
     #theme=THEME,
@@ -100,7 +99,9 @@ app.add_page(test.test, route="/test", title="测试")  # 测试
 # endregion
 
 # region下面是注册生命周期任务
-app.register_lifespan_task(load_config_from_db)  # 定时从数据库加载配置到python变量，以供用户加载/刷新页面时高效查询。
+app.register_lifespan_task(global_config_update_function.load_config_page_from_db)  # 定时从数据库加载配置到python变量，以供用户加载/刷新页面时高效查询。
+app.register_lifespan_task(global_config_update_function.load_config_system_from_db)
+app.register_lifespan_task(global_config_update_function.load_config_system_from_db_test_config_var)
 # endregion
 
 

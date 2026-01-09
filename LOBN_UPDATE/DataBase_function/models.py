@@ -2,7 +2,7 @@
 # 注意！一个表只能被实例化一次。
 
 from typing import List, Optional
-import rxconfig, uuid, datetime
+import uuid, datetime
 from sqlmodel import Field, Relationship, SQLModel, Column, ARRAY, TEXT, UUID, String, JSON, Text, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 from decimal import Decimal
@@ -22,12 +22,12 @@ class 这个实例化的模块的命名(SQLModel, table=True):
     uuid: uuid.UUID  # UUID的数据类型是 uuid.UUID 需要导入库：uuid
     name: str
     money: Decimal = Field(decimal_places=6)  # max_digits最多可以有数字位数(6位)  decimal_places最多小数位数   注意：mon
-    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    change_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
     org_base: List[str] = Field(default=None, sa_column=Column(ARRAY(String())))  # 数组内含字符串的映射方法
     一对多中的多: str = Field(default=None, foreign_key="表名.字段")  # 外键：一对多  （多对多使用关联表）  问题：如果外键关联的表，取决于关联表里的另一个字段（通过类型字段判断这个id是哪张表里的id），这个就有点复杂了
     jsonb: dict = Field(default=None, sa_type=JSON)  # jsonb格式的数据 {'name':'姓名str(加盐密码A)', 'id_card':'身份证号str(加盐密码B)'}
     phone_number: str = Field(unique=True, nullable=False)  # 唯一约束，使得此字段数据不能有重复（允许多个null值）、非空(如果定义了外键则不用显示写nullable=False，因为外键默认非空)
-    示例表2属性名: list["示例表2"] = Relationship(back_populates="示例表1属性名")  # 关系：# 单向关系则不需要back_populates    # List["对方表"] 【注意引号】 对方表是“多”， 对方有多个对应结果， 用    List["对方表名"]
+    #示例表2属性名: list["示例表2"] = Relationship(back_populates="示例表1属性名")  # 关系：# 单向关系则不需要back_populates    # List["对方表"] 【注意引号】 对方表是“多”， 对方有多个对应结果， 用    List["对方表名"]
 
 
 class 示例表2(SQLModel, table=True):
@@ -36,7 +36,7 @@ class 示例表2(SQLModel, table=True):
     # 下面是需要的列   必须
     id: int | None = Field(default=None, primary_key=True)
     外键_表1id: int | None = Field(default=None, foreign_key="数据库里的架构名.示例表1.id")  # 注意！有关系字段的情况下，外键要用完整路径（宽泛到架构名）（foreign_key="架构名.表名.字段名"），因为关系需要参考定义的外键，关系会在ORM程序内分析，这里收到python上下文的约束（join不用，因为一ing定义的__table_args__ = {"schema": "public"}直接给数据库处理，数据库没有python这里的上下文限制）
-    示例表1属性名: 这个实例化的模块的命名 | None = Relationship(back_populates="示例表2属性名")  # 关系：通常名称加前缀 teble_
+    #示例表1属性名: 这个实例化的模块的命名 | None = Relationship(back_populates="示例表2属性名")  # 关系：通常名称加前缀 teble_
     # 关系的使用方式
     # 对方的名字  | None
     # 对方表是“一”， 对方只有一个对应结果， 用    对方表名 | None
@@ -76,11 +76,6 @@ class 示例表2(SQLModel, table=True):
 '''
 通用字段示例：
 
-权限: 优先遵从权限配置，而后遵从权限等级
-
-privilege_level     (权限等级)
-含义：不同等级代表着不同的权限配置模板【以后再做】【权限配置模板还没做】
-
 privilege_select    (权限配置)【可改进】以后可以改为子表，做一个联查来加速查询
 权限配置的结构：
     1. 键为权限内容
@@ -101,19 +96,19 @@ privilege_select    (权限配置)【可改进】以后可以改为子表，做�
 与网站的运行逻辑有关，使得可以在后台配置网站的运行方式。
 极高频读，极低频写。
 逐渐就是name，name直接与配置的结构对应，中间用 - 连接
-*【以后再做】需要审计-需要记录历史操作记录（现在只是新增，找同一位置(uuid)下最新的）
+审计: 低写入、内部使用。放到history表里。
 '''
-class sys_config(SQLModel, table=True):
+class config_system(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
-    __table_name__ = "sys_config"  # 必须
+    __table_name__ = "config_system"  # 必须
     # 下面是需要的列   必须
-    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 配置项的uuid
+    uuid: uuid.UUID = Field(default_factory=uuid7, primary_key=True)  # 配置项的uuid
     value: str  # 配置项的值
     value_type: str = Field(default='str')  # 配置项的值的数据类型说明，比如bool、int、str、dict等,用于在应用层进行转换。
     name: str = Field(unique=True)  # 此配置的类别，用作分类，主要起到说明指示作用，底层只使用uuid。另外有uuid与配置位置的对照表。
     tip: str  # 提示——说明此配置项的作用
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
-    create_user_uuid: str = Field(default=None, foreign_key="public.user.uuid")    # 创建词条数据的人的uuid，只有管理员才能操作，管理员有确切的账户uuid。
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    create_user_uuid: uuid.UUID = Field(default=None, foreign_key="public.user.uuid")    # 创建词条数据的人的uuid，只有管理员才能操作，管理员有确切的账户uuid。
     
 
 
@@ -121,16 +116,16 @@ class sys_config(SQLModel, table=True):
 通用界面配置表
 这里存储页面的公共配置数据，前端每次加载和后台修改配置都触发查询。
 极高频读，极低频写。
-*【以后再做】需要审计-需要记录历史操作记录（现在只是新增，找同一位置(uuid)下最新的）
+审计: 低写入、内部使用。放到history表里。
 '''
-class page_config(SQLModel, table=True):
+class config_page(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
-    __table_name__ = "page_config"  # 必须
+    __table_name__ = "config_page"  # 必须
     # 下面是需要的列   必须
-    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 页面的uuid。主要起到说明指示作用，底层只使用uuid。另外有uuid与页面位置的对照表。
+    uuid: uuid.UUID = Field(default_factory=uuid7, primary_key=True)  # 页面的uuid。主要起到说明指示作用，底层只使用uuid。另外有uuid与页面位置的对照表。
     value: dict = Field(default=None, sa_type=JSON)  # 页面配置，jsonb格式存储    
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")) # 此配置的创建时间
-    create_user_uuid: str = Field(default=None, foreign_key="public.user.uuid")    # 创建词条数据的人的uuid，只有管理员才能操作，管理员有确切的账户uuid。
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC)) # 此配置的创建时间
+    create_user_uuid: uuid.UUID = Field(default=None, foreign_key="public.user.uuid")    # 创建词条数据的人的uuid，只有管理员才能操作，管理员有确切的账户uuid。
     tip: str = Field(unique=True)  # 提示-通常是页面名称，唯一约束. 不强制，更多是为了方便查询，每个页面都要有唯一的uuid
 
 '''
@@ -144,9 +139,9 @@ class history(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "history"  # 必须
     # 下面是需要的列   必须
-    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 历史页面配置的uuid
+    uuid: uuid.UUID = Field(default_factory=uuid7, primary_key=True)  # 历史页面配置的uuid
     value: dict = Field(sa_type=JSON)  # 页面配置，jsonb格式存储    
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")) # 归档时间
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC)) # 归档时间
 
     
 
@@ -159,14 +154,14 @@ class user(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "user"  # 必须
     # 下面是需要的列   必须
-    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 【不用uuid.UUID是因为state的var不支持uuid】【创建新行时，这里生成uuid】主键由数据库管理，为确保唯一性一般不由代码设置. 这里除外，因为代码生程uuid更快。主键生成时会检测唯一性。
+    uuid: uuid.UUID = Field(default_factory=uuid7, primary_key=True)  # 【不用uuid.UUID是因为state的var不支持uuid】【创建新行时，这里生成uuid】主键由数据库管理，为确保唯一性一般不由代码设置. 这里除外，因为代码生程uuid更快。主键生成时会检测唯一性。
     name: str
     phone_number: str = Field(unique=True, index=True)  # 唯一约束
     money: Decimal = Field(default=0, decimal_places=6)  # max_digits最多可以有数字位数(6位)  decimal_places最多小数位数   注意：mon
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
-    last_login_date: str  # 最后登录时间
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    last_login_date: datetime.datetime  # 最后登录时间
     level: int = Field(default=0)  # 个人VIP等级   0为无vip
-    privilege_select: dict = Field(default=rxconfig.user.default_user_signin_privilege_select, sa_type=JSON)  # 权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
+    privilege_select: dict = Field(default={}, sa_type=JSON)  # 权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
     real_man_verify_info: dict = Field(default=None, sa_type=JSON)  # 实人认证信息 {'name':'姓名str(加盐密码A)', 'id_card_number':'身份证号str(加盐密码B)'}
 
 
@@ -179,9 +174,9 @@ class user_login_history(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "user_login_history"  # 必须
     # 下面是需要的列   必须
-    uuid: str = Field(default_factory=uuid7, primary_key=True)
-    user_uuid: str  #用户uuid
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    uuid: uuid.UUID = Field(default_factory=uuid7, primary_key=True)
+    user_uuid: uuid.UUID  #用户uuid
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
     action: bool    #用户行为：登录为True；注销为False
     ip: str    #IP地址
 
@@ -195,21 +190,21 @@ class user_login_history(SQLModel, table=True):
 config:
     身份加入组织时是否需要申请:
     # 【被org2identity_type_name的第一个参数等效代替】 default_signup_org2identity_type_name   默认身份注册到组织时，身份在组织中的岗位的名称。【应为org2identity_type_name已存在的名称】
-去除：extra_data_uuid: str  # 附加字段表的数据的uuid
+去除：extra_data_uuid: uuid.UUID  # 附加字段表的数据的uuid
     附加字段依靠于org，的外键是org.uuid,而不是反过来。
 '''
 class org(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "org"  # 必须
     # 下面是需要的列   必须
-    uuid: str = Field(default_factory=uuid7, primary_key=True)
+    uuid: uuid.UUID = Field(default_factory=uuid7, primary_key=True)
     org_type: str  # 组织类型  基本类型: 基地(base)、企业(company)、院校(school)  附属类型:班级(class)
     url_name: str = Field(default=None, unique=True) #【唯一】【可选】 url别名，如果设置了，可以通过别名访问。含义与uuid相同，是更简单的方法，去别的别名可以更改，面向啊你给外部，而uuid不可更改，面向内部。
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
-    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    change_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
     last_login_date: str    # 最后管理员登录时间
-    owner_identity_uuid: str = Field(foreign_key="public.identity.uuid")  # 拥有此组织的身份的uuid（确定且唯一）
-    super_admin_identity_uuid: str= Field(foreign_key="public.identity.uuid")  # 超管身份的uuid（确定且唯一）
+    owner_identity_uuid: uuid.UUID = Field(foreign_key="public.identity.uuid")  # 拥有此组织的身份的uuid（确定且唯一）
+    super_admin_identity_uuid: uuid.UUID= Field(foreign_key="public.identity.uuid")  # 超管身份的uuid（确定且唯一）
     name: str
     level: int = Field(default=0)   # 组织的vip等级   0为无vip
     privilege_select: dict = Field(default={}, sa_type=JSON)  # 同一职位内部的权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
@@ -230,10 +225,10 @@ class org_map_org2identity(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "org_map_org2identity"  # 必须
     # 下面是需要的列   必须
-    org_uuid: str = Field(default=None, foreign_key="public.org.uuid", primary_key=True)    # 组织的uuid
-    identity_uuid: str = Field(default=None, foreign_key="public.identity.uuid", primary_key=True)  # 身份uuid
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
-    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    org_uuid: uuid.UUID = Field(default=None, foreign_key="public.org.uuid", primary_key=True)    # 组织的uuid
+    identity_uuid: uuid.UUID = Field(default=None, foreign_key="public.identity.uuid", primary_key=True)  # 身份uuid
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    change_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
     last_login_date: str  # 最后登录时间
     level: int = Field(default=0)  # 【正整数】当前此组织的身份的vip等级   0为无vip
     identity_type: str = Field(default='')   # 身份在组织内的的特殊职位列表,  是组织对身份的定义。
@@ -252,14 +247,14 @@ class org_map_relation(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "org_map_relation"  # 必须
     # 下面是需要的列   必须
-    uuid: str
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
-    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    uuid: uuid.UUID
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    change_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
     base_privilege_select: dict = Field(default={}, sa_type=JSON)  # 权限详细配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。
     data: dict = Field(default=None, sa_type=JSON)  # 组织数据
     tip: str  # 说明（详细简介）
     slogan: str  # 标语——简要简介（一句话）
-    base_org_uuid: str = Field(default=None, foreign_key="public.org.uuid", primary_key=True)    # 根组织的uuid，便于快速查询
+    base_org_uuid: uuid.UUID = Field(default=None, foreign_key="public.org.uuid", primary_key=True)    # 根组织的uuid，便于快速查询
 '''
 
 
@@ -279,12 +274,12 @@ class identity(SQLModel, table=True):
     __table_args__ = {"schema": "public"}  # 必须
     __table_name__ = "identity"  # 必须
     # 下面是需要的列   必须
-    uuid: str = Field(default_factory=uuid7, primary_key=True)  # 此关系本身的uuid
+    uuid: uuid.UUID = Field(default_factory=uuid7, primary_key=True)  # 此关系本身的uuid
     identity_type: str  # 身份类型     管理(admin),运维(service)教师(teacher),学生(vip)       对于网站系统而言
-    create_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
-    change_date: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
+    create_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    change_date: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
     last_login_date: str  # 最后登录时间
-    user_uuid: str = Field(foreign_key="public.user.uuid")    # 用户的uuid
+    user_uuid: uuid.UUID = Field(foreign_key="public.user.uuid")    # 用户的uuid
     name: str
     level: int = Field(default=0)   # vip等级   0为无vip
     privilege_select: dict = Field(default={}, sa_type=JSON)  # 此身份的基础权限配置，用于权限管理，覆盖权限等级预设的权限。  None为无特殊权限覆盖，完全遵从权限等级预设。

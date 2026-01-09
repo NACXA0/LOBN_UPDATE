@@ -12,8 +12,8 @@ uuid7   #数据库主键用uuid7    【可随意最新】
 #ARM版的MacOS 终端执行 ：/usr/sbin/softwareupdate --install-rosetta --agree-to-license
 #reflex-calendar #日历  约时间系统使用    【可随意最新】
 #zhipuai #AI的API 【可随意最新】
-#aioredis    # 异步redis   【可随意最新】
-#hiredis     # 异步redis的加速库   【可随意最新】
+aioredis    # 异步redis   【可随意最新】
+hiredis     # 异步redis的加速库   【可随意最新】
 #pandas  # 数据处理，现在用在组织信息与个人信息的归类展示上  【可随意最新】
 #alipay-sdk-python   # 支付宝相关     实人认证使用  【可随意更新】
 #reflex-qrcode   # 二维码    实人认证用  【可随意最新】

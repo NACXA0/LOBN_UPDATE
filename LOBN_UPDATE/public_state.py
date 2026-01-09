@@ -1,11 +1,10 @@
 #共用state
 import reflex as rx
-import rxconfig
-import time, random, asyncio, datetime, uuid
+import global_config, time, random, asyncio, datetime, uuid
 from decimal import Decimal
 from sqlmodel import Session, select
 from .DataBase_function.database import engine
-from .DataBase_function.models import user, user_login_history, product_make_an_appointment_time
+from .DataBase_function.models import user, user_login_history
 #from .public_function import logic_scend_sms, random_user_name, yield_on_datetime_index, yield_on_datetime_index_real_time, make_an_appointment_template_check_is_time_now
 
 
@@ -41,7 +40,7 @@ class state_login(BaseState):
             info_line = session.exec(select(user).where(user.uuid == user_uuid)).first()  # 找到的数据行
             # 2. 提取用户信息,并写入到state
             self.user_uuid = str(user_uuid)
-            self.user_money_can_only_be_show = str(round(info_line.money, rxconfig.config_money.round_num))  # 展示用户金钱
+            self.user_money_can_only_be_show = str(round(info_line.money, global_config.config_money.round_num))  # 展示用户金钱
             self.user_name = str(info_line.name)  # 展示用户昵称
             self.user_phone_number = str(info_line.phone_number)  # 展示用户手机号
 

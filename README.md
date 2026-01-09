@@ -75,9 +75,15 @@
 
 
 
-    - 后台修改网站运行逻辑配置的方式：原理同上。
+    - 后台修改网站运行逻辑配置的方式：原理同上。-> global_config.py
+      - 配置数据数据库-[低频同步]->全局python变量-[用户主动刷新（以后做主动同步）]->state.var   同一个变量有python变量和state.var两种
       - 这里存储系统的全局配置数据、网站运行逻辑等。比如开关开发者模式、底层条件频率限制、与网站的运行逻辑有关，使得可以在后台配置网站的运行方式。
       - 实现在不停机的情况下对网站运行进行控制
+      - 更新方式：
+        1. 当前：on_load 用户主动刷新则改变。
+        2. 以后：高频同步。**尚且未知怎么做。**
+            reflex如何实现一个事件处理器在用户处于某页面（聚焦于此页面更好）的时候才运行（或者周期性运行），否则不运行或者能触发什么中断条件？
+            比如当用户处在页面时才使用不断获取某某数据的函数。 
       - 造成的影响：
         1. 原来的一些rxconfig里的参数（与网站运行相关）要转移进来。
         2. 现在rxconfig里只有更加必要的配置数据，如数据库、认证信息等（网站属性相关定义）
@@ -94,7 +100,9 @@
     3. sqlmodel的模型字段定义参数：“nullable=False” ：非空(如果定义了外键则不用显示写nullable=False，因为外键默认非空) 
     4. org表去除：extra_data_uuid: str  # 附加字段表的数据的uuid
     附加字段依靠于org，的外键是org.uuid,而不是反过来。
-    5. 
+    5. SQLModel对数据类型的支持进化了，以前很多需要用str，现在都原生支持了。比如：datetime、uuid、
+    6. 将rxconfig中不属于reflex本身的部分分离，出来是一个global_config全局python变量缓存，有结构地存储等待赋值的python变量，内部的生命周期程序（这里时私有的函数）定期从数据库获取最新配置。
+    7. 
 
 
 业务内容：
@@ -108,6 +116,110 @@
     前台展示
     活动
     通知
+
+
+
+
+### 设计方案
+- 检测登录用户/用户单点登录（含多进程）：
+    每一个进程运行一开始都声称一个id->每个用户登录时都写入公共redis（用户id+进程id）—-》
+    1. 用户退出redis收不到用户实例发来的心跳，则redis根据用户id删除数据 
+    2. 进程结束redis心跳收不到进程回应，则redis根据进程删除数据
+
+
+
+
+- 文件结构的调用等级：越小越底层，只有高层可以调用底层，底层不能调用高层
+    1. global_config   # 全局python变量缓存，如系统设置、全局页面设置等
+    2. DataBase_funcfion/database, DataBase_funcfion/models     问题：数据库模型无法根据自己的数据而改变查询方式-除非将global_config的变量部分与查询逻辑分离【以后需要再做】
+    3. global_config_get    获取全局python变量的生命周期函数
+    4. public_state、public_function
+    5. public_component
+    6. public_template 模板高于组件，因为组件组成模板
+    7. public_web_tool.video_player、 
+    8. page 【这里是私有内容，可以调用前面的公有内容】
+    9.  public_on_load on_load可能使用任意页面内部的state的function，所以必须高于所有页面 【此处使用到了公有与专有的内容，需要提权】
+    10. LOBN_UPDATE、rxconfig 【这里有app的实例化，也有基础设置、激活此处的实例的程序(为了不传参地激活)】仅reflex的config
+
+
+
+- 缓存变量基本代码架构示例——用户主动刷新。    高频同步以后再说，还不知道怎么做。
+    配置信息数据库->python全局变量->state.var
+    - ``` python 前端设置+显示： 
+        import reflex as rx
+        import global_config
+        from sqlmodel import Session, select
+        from LOBN_UPDATE.DataBase_function.database import engine
+        from LOBN_UPDATE.DataBase_function.models import config_system
+        from LOBN_UPDATE.public_function import random_user_name
+        class state(rx.State):
+            config_page: dict = {}
+            config_system: dict = {}
+            config_test_var: str  # 测试用的变量，后台配置修改后会更新此变量的值
+            
+            @rx.event
+            def test_update_config_var(self, new_value: dict):
+                # 模拟更新配置变量的操作
+                
+                # 写入数据库
+                with Session(engine) as session:
+                    session.add(config_system(
+                        value=new_value['new_value'], 
+                        value_type='str', 
+                        name=f'测试后台设置值({random_user_name()})',
+                        tip='这是一个用于测试的后台设置值',
+                        create_user_uuid='06960ab6-bd3d-739d-8000-ec86da6176d5'
+                    ))
+                    session.commit()
+
+                return rx.toast.success('配置已更新！')
+
+            # 加载-主动刷新以更新
+            def load_config_system_from_var_test(self):
+                self.config_test_var = global_config.test_config_var
+                print('state.var主动刷新加载配置：', self.config_test_var)
+                
+        @rx.page(on_load=state.load_config_system_from_var_test)
+        def setting() -> rx.Component:
+            return rx.box(
+                rx.card(
+                    rx.text('测试后台设置值：', state.config_test_var),
+                    rx.form(
+                        rx.input(placeholder='新值', name='new_value'),
+                        rx.button('提交', type='submit'),
+                        on_submit=state.test_update_config_var
+                    )
+
+                )
+            )
+    ```
+    - ``` python 全局python变量
+        test_config_var: str = '初始值'  # 测试用的变量，后台配置修改后会更新此变量的值
+    ```
+    - ``` python 从数据库获取配置数据
+        # 生命周期任务-定时查询系统配置数据库->写入python程序变量
+        async def load_config_system_from_db_test_config_var():
+            try:
+                while True:
+                    # 查询系统配置数据库
+                    # '占位-查询一次系统配置数据库'
+                    with Session(engine) as session:
+                        # 1. 在数据库里查询对uuid的用户
+                        response = session.exec(select(config_system)).all()  # 找到的数据行
+                        # '占位-将系统配置数据行写入到对应的python变量中'
+                        out = response[random.randint(0, len(response)-1)]
+                        if response:
+                            global_config.test_config_var = out.value
+
+                    await asyncio.sleep(5)  # 每几秒查询一次
+            except asyncio.CancelledError:
+                print("程序因错误而关闭: async def load_config_page_from_db():")
+    ```
+    - ``` python 将函数“从数据库获取配置数据”注册为生命周期任务在后台运行
+        app.register_lifespan_task(global_config_update_function.load_config_system_from_db_test_config_var)
+    ```
+
+
 
 
 

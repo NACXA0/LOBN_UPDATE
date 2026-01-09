@@ -7,14 +7,13 @@
 【待改进】增加功能：request_url    在url传入，登陆后跳转到那个url（因为点击了需要登录的应用，所以在来到登录，登陆后再回去），不填则转到主页。
 '''
 
-import rxconfig
 import reflex as rx
-import asyncio, datetime, time, uuid
-from WEB_DaNa.public_state import state_login, BaseState, state_redis_pubsub, public_background, state_for_identity
-from WEB_DaNa.public_function import logic_scend_sms, random_user_name
+import global_config, asyncio, datetime, time, uuid
+from LOBN_UPDATE.public_state import state_login, BaseState#, state_redis_pubsub, public_background, state_for_identity
+from LOBN_UPDATE.public_function import logic_scend_sms, random_user_name
 from sqlmodel import Session, select, desc
-from WEB_DaNa.DataBase_function.database import engine
-from WEB_DaNa.DataBase_function.models import user, user_login_history, identity
+from LOBN_UPDATE.DataBase_function.database import engine
+from LOBN_UPDATE.DataBase_function.models import user, user_login_history, identity
 from uuid_extensions import uuid7, uuid7str
 
 
@@ -90,7 +89,7 @@ class state(rx.State):
         if not self.verify_phone_number_input.isdigit():
             return rx.toast.error('请输入正确的手机号')
         # 3. 前置条件判断：发送不过于频繁
-        if time.time() - float(self._verify_code_create_date) < rxconfig.verify_code.send_sms_freq:
+        if time.time() - float(self._verify_code_create_date) < global_config.verify_code.send_sms_freq:
             return rx.window_alert("请稍后再试，验证码请求过于频繁。")  # 这里用aleart，强制选择确认框后再继续
         # 通过了前置条件 -》
         # 4. 记录发送验证码的手机号
@@ -124,7 +123,7 @@ class state(rx.State):
         if not self._verify_code:
             return False, rx.toast.warning("请先发送验证码")
         # 2. 前置条件判断：现有的验证码是否已经过期
-        if time.time() - float(self._verify_code_create_date) >= rxconfig.verify_code.verify_code_effective_time:  # 验证码过期
+        if time.time() - float(self._verify_code_create_date) >= global_config.verify_code.verify_code_effective_time:  # 验证码过期
             return False, rx.toast.error("验证码已过期，请重新发送。")
         # 3. 前置条件判断：验证码是否输入正确
         if (self.verify_phone_number_input != self._verify_phone_number) or (self.verify_code_input != self._verify_code):  # 手机号或验证码任一不相等。   用不等而不是等于，不等更简单-》任何不符，直接拒绝。
@@ -134,7 +133,7 @@ class state(rx.State):
 
     # 点击发送验证码后按钮延迟 只管如何禁用send_verify_code_button_show，需要设置默认文字   禁用按钮->开始倒计时->解锁
     @rx.event(background=True)
-    async def change_send_verify_code_button_show(self, count_down: int = rxconfig.verify_code.send_sms_freq):
+    async def change_send_verify_code_button_show(self, count_down: int = global_config.verify_code.send_sms_freq):
         '''
         调用方法：
         rx.button(
@@ -196,13 +195,11 @@ class state(rx.State):
                 user_name = random_user_name
                 user_money = '0'
                 user_level = 0
-                user_privilege_level = 10
-                user_privilege_select = rxconfig.user.default_user_signin_privilege_select
+                user_privilege_select = global_config.user.default_user_signin_privilege_select
                 # 1.2.1.1.2 构造会员身份数据
                 identity_uuid = uuid7
                 identity_name = user_name
                 identity_level = 0
-                identity_privilege_level = 10
                 identity_privilege_select = None
                 identity_tip = '账号注册第一会员身份'
                 identity_slogan = '账号注册第一会员身份'
@@ -222,7 +219,6 @@ class state(rx.State):
                 user_name = user_info_line.name
                 user_money = user_info_line.money
                 user_level = user_info_line.level
-                user_privilege_level = user_info_line.privilege_level
                 user_privilege_select = user_info_line.privilege_select
 
                 # 1.2.2.2 查找最近登录的会员身份   （只有注册过才需要查找）
@@ -234,7 +230,6 @@ class state(rx.State):
                 identity_uuid = identity_recent_info_line.uuid
                 identity_name = identity_recent_info_line.name
                 identity_level = identity_recent_info_line.level
-                identity_privilege_level = identity_recent_info_line.privilege_level
                 identity_privilege_select = identity_recent_info_line.privilege_select
                 identity_tip = identity_recent_info_line.tip
                 identity_slogan = identity_recent_info_line.slogan
@@ -242,7 +237,7 @@ class state(rx.State):
             # 2.1 写入用户信息到state
             base_state = await self.get_state(BaseState)
             base_state.user_uuid = str(user_uuid)
-            base_state.user_money_can_only_be_show = str(round(user_money, rxconfig.config_money.round_num))  # 展示用户金钱
+            base_state.user_money_can_only_be_show = str(round(user_money, global_config.config_money.round_num))  # 展示用户金钱
             base_state.user_name = user_name  # 展示用户昵称
             base_state.user_phone_number = user_phone_number  # 展示用户手机号
             base_state.user_level = user_level  # 用户等级
@@ -261,7 +256,7 @@ class state(rx.State):
             # 3. 记录最新登陆时间
             user_info_line.last_login_date = str(datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"))
             # 记录登录历史记录
-            session.add(user_login_history(user_uuid=str(user_uuid), action=True, ip=self.router.session.client_ip))
+            session.add(user_login_history(user_uuid=user_uuid, action=True, ip=self.router.session.client_ip))
             session.commit()
         # 4. 修改展示的登陆状态
         get_state_login.text_login_state, get_state_login.color_login_state = '注销', 'red'

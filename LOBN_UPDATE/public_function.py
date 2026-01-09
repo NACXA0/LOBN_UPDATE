@@ -1,19 +1,23 @@
 # 公共函数 和 公共变量
 import reflex as rx
-import time
-
 from typing import Tuple, Literal
 import rxconfig
-#import os, random, time, datetime, asyncio, logging, traceback, uuid
+import os, random, time, datetime, asyncio, logging, traceback, uuid
 #import pandas as pd
 from sqlmodel import Session, select, or_
 from .DataBase_function.database import engine
 #from .DataBase_function.models import user, product_make_an_appointment_time, org, identity, org_map_org2identity, approve_event, approve_history, approve_team
 
+# region 阿里云
+
+
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
 # 下面是短信用的
 #from alibabacloud_dysmsapi20170525.client import Client as Dysmsapi20170525Client
 #from alibabacloud_tea_openapi import models as open_api_models
-#from alibabacloud_dysmsapi20170525 import models as dysmsapi_20170525_models
+from alibabacloud_dysmsapi20170525 import models as dysmsapi_20170525_models
 #from alibabacloud_tea_util import models as util_models
 #from alibabacloud_tea_util.client import Client as UtilClient
 #
@@ -21,41 +25,12 @@ from .DataBase_function.database import engine
 
 
 
-# region 公共变量
 
-    # region 下面是页面配置的公共变量
-page_config_index: dict = {}   # 首页的配置
-page_config_login: dict = {}   # 登录页的配置
-    # endregion
-# endregion
 
 
 
 
 # 下面是公共函数
-
-# 生命周期任务-定时查询配置文件数据库->写入python程序变量
-def load_page_config_from_db(db_connection):
-    while True:
-        # 查询配置文件数据库
-        print('占位-查询一次数据库')
-        # 写入python变量
-        print('占位-一条数据是一个页面配置的json-将所有的配置数据行写入到对应页面的python变量中')
-        time.sleep(rxconfig.freq_of_get_ui_config)  # 每几秒查询一次
-
-# 生命周期任务-定时查询系统配置数据库->写入python程序变量
-# 直接写入到rxconfig中
-def load_system_config_from_db(db_connection):
-    while True:
-        # 查询系统配置数据库
-        print('占位-查询一次系统配置数据库')
-        # 写入python变量
-        print('占位-将系统配置数据行写入到对应的python变量中')
-        time.sleep(rxconfig.freq_of_get_system_config)  # 每几秒查询一次
-
-
-
-
 
 
 # 【随机起名】 用于新注册用户
@@ -100,4 +75,62 @@ for _ in range(10):     这个优先循环，或者是一直循环while True
     print(next(cycled_iterator))
 '''
 
+# 发送短信验证码
+class logic_scend_sms():
+    '''
+    调用示例：logic_scend_sms(phone_number=手机号码, code=发送的短信验证码)
+    功能：发送短信验证码，随机4~6位
+    输入：bigint的手机号， rxconfig.py里的短信发送频率：sms_freq（秒/个）， 【需要与后台高频数据库结合】短时间验证码发送历史- 对应数据库：sms_schema/sms_verify_code - 对应模板：.DataBase_function/models/pages_self_define_function_send_verify_code
+    输出：int的验证码
+    阿里云发送限制（对同一个手机号）：1条/分钟，5条/小时，10条/天。
+    前期设置：sign_name 和 template_code 要现在阿里云申请
+    '''
+
+    @staticmethod
+    def generate_verify_code() -> str:
+        if rxconfig.is_prod:
+            return str(f"{random.randint(0, 9999):04d}")
+        else:
+            return '1234'
+
+
+
+    @staticmethod
+    def main(phone_number: int, code: str):
+        if not rxconfig.is_prod:
+            return print('【测试】发送验证码'+code+'到手机号'+str(phone_number))
+        send_sms_request = dysmsapi_20170525_models.SendSmsRequest(
+            sign_name = rxconfig.verify_code.sign_name,
+            template_code = rxconfig.verify_code.template_code,
+            phone_numbers = phone_number,
+            template_param = str({"code": code})
+        )
+        try:
+            return rxconfig.aliyun.create_client().send_sms_with_options(send_sms_request, util_models.RuntimeOptions())
+        except Exception as error:
+            # 此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常。
+            UtilClient.assert_as_string(error.message)
+            # 错误 message + 诊断地址
+            #raise f'错误 message{error.message}, 诊断地址{error.data.get("Recommend")}'
+            raise error
+
+    @staticmethod
+    async def main_async(phone_number: int, code: str):
+        if not rxconfig.is_prod:
+            return print('【测试】发送验证码'+code+'到手机号'+str(phone_number))
+        send_sms_request = dysmsapi_20170525_models.SendSmsRequest(
+            sign_name = rxconfig.verify_code.sign_name,
+            template_code = rxconfig.verify_code.template_code,
+            phone_numbers = phone_number,
+            template_param = str({"code": code})
+        )
+        try:
+            # 复制代码运行请自行打印 API 的返回值
+            return await rxconfig.aliyun.create_client().send_sms_with_options_async(send_sms_request, util_models.RuntimeOptions())
+        except Exception as error:
+            # 此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常。
+            UtilClient.assert_as_string(error.message)
+            # 错误 message + 诊断地址
+            #raise f'错误 message{error.message}, 诊断地址{error.data.get("Recommend")}'
+            raise error
 
