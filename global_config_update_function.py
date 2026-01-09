@@ -41,7 +41,12 @@ async def load_config_system_from_db_test_config_var():
                 # '占位-将系统配置数据行写入到对应的python变量中'
                 out = response[random.randint(0, len(response)-1)]
                 if response:
+
+                    # 方案1: 变量缓存
                     global_config.test_config_var = out.value
+
+                    # 方案2: redis缓存
+                    正在做
 
             await asyncio.sleep(5)  # 每几秒查询一次
     except asyncio.CancelledError:

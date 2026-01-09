@@ -101,7 +101,7 @@ app.add_page(test.test, route="/test", title="测试")  # 测试
 # region下面是注册生命周期任务
 app.register_lifespan_task(global_config_update_function.load_config_page_from_db)  # 定时从数据库加载配置到python变量，以供用户加载/刷新页面时高效查询。
 app.register_lifespan_task(global_config_update_function.load_config_system_from_db)
-app.register_lifespan_task(global_config_update_function.load_config_system_from_db_test_config_var)
+app.register_lifespan_task(global_config_update_function.load_config_system_from_db_test_config_var)   
 # endregion
 
 

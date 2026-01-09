@@ -38,7 +38,12 @@ class state(rx.State):
 
     # 加载-主动刷新以更新
     def load_config_system_from_var_test(self):
+        # 方案1：变量缓存
         self.config_test_var = global_config.test_config_var
+
+        # 方案2:redis缓存
+        正在做
+
         print('state.var主动刷新加载配置：', self.config_test_var)
         
 @rx.page(on_load=state.load_config_system_from_var_test)

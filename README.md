@@ -76,6 +76,7 @@
 
 
     - 后台修改网站运行逻辑配置的方式：原理同上。-> global_config.py
+      - 不直接查数据库，利用数据库缓存的原因：查数据库需要很多的网络开销，而变量或着redis的开销很低（redis缓存的方案以后需要多进程优化再考虑）
       - 配置数据数据库-[低频同步]->全局python变量-[用户主动刷新（以后做主动同步）]->state.var   同一个变量有python变量和state.var两种
       - 这里存储系统的全局配置数据、网站运行逻辑等。比如开关开发者模式、底层条件频率限制、与网站的运行逻辑有关，使得可以在后台配置网站的运行方式。
       - 实现在不停机的情况下对网站运行进行控制
@@ -121,7 +122,7 @@
 
 
 ### 设计方案
-- 检测登录用户/用户单点登录（含多进程）：
+- 检测登录用户/用户单点登录（含多进程）： 现在单进程版直接用本地变量。
     每一个进程运行一开始都声称一个id->每个用户登录时都写入公共redis（用户id+进程id）—-》
     1. 用户退出redis收不到用户实例发来的心跳，则redis根据用户id删除数据 
     2. 进程结束redis心跳收不到进程回应，则redis根据进程删除数据
@@ -130,8 +131,8 @@
 
 
 - 文件结构的调用等级：越小越底层，只有高层可以调用底层，底层不能调用高层
-    1. global_config   # 全局python变量缓存，如系统设置、全局页面设置等
-    2. DataBase_funcfion/database, DataBase_funcfion/models     问题：数据库模型无法根据自己的数据而改变查询方式-除非将global_config的变量部分与查询逻辑分离【以后需要再做】
+    1. global_config、DataBase_funcfion/models    # 全局python变量缓存，如系统设置、全局页面设置等 # 以后改为redis-om的模型文件 如果改了：基础数据、模版类、静态末端配置文件，没有引用关系
+    2. DataBase_funcfion/database、global_config_instace    # 长连接实例，有些依赖数据与模版
     3. global_config_get    获取全局python变量的生命周期函数
     4. public_state、public_function
     5. public_component
@@ -143,7 +144,13 @@
 
 
 
-- 缓存变量基本代码架构示例——用户主动刷新。    高频同步以后再说，还不知道怎么做。
+
+## 缓存与前后台配置专栏
+- 三种缓存的讲解（简略）：
+  1. global_config  数据缓存-以后改为redis-om的模版，
+  2. global_config_update_function  更新数据缓存的函数，通常是从数据糊获取数据，然后加入缓存
+  3. global_config_instance  实例化的缓存，有长连接等非静态数据的“变量”。
+- 缓存变量基本代码架构示例——用户主动刷新。    高频同步以后再说，还不知道怎么做。    redis缓存的方案以后需要多进程优化再考虑
     配置信息数据库->python全局变量->state.var
     - ``` python 前端设置+显示： 
         import reflex as rx
