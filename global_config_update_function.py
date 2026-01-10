@@ -45,7 +45,7 @@ async def load_config_system_from_db_test_config_var():
                     # 方案1: 变量缓存
                     global_config.test_config_var = out.value
 
-                    # 方案2: redis缓存
+                    # 方案2: redis-om缓存
                     正在做
 
             await asyncio.sleep(5)  # 每几秒查询一次

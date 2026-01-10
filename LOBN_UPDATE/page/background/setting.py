@@ -41,7 +41,7 @@ class state(rx.State):
         # 方案1：变量缓存
         self.config_test_var = global_config.test_config_var
 
-        # 方案2:redis缓存
+        # 方案2:redis-om缓存
         正在做
 
         print('state.var主动刷新加载配置：', self.config_test_var)

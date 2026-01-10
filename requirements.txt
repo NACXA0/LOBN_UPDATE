@@ -1,4 +1,3 @@
-
 #ubuntu需要unzip
 reflex  # 【可随意最新】
 psycopg2    #ubuntu需要先在系统里安装 sudo apt install libpq-dev  MacOS改用psycopg2-binary 【可随意最新】
@@ -22,5 +21,7 @@ hiredis     # 异步redis的加速库   【可随意最新】
 #alibabacloud_credentials    # 管理阿里云凭据   【可随意最新】
 #mypy    # 插件需要安装    【可随意最新】
 #reflex-enterprise   # 【未启用】企业版reflex，包含正在更新的ag-grid     【可随意最新】
+# 需要redis8.0 （因为其内置RedisJSON）
+redis-om    # 适合python类型的redis缓存 【可随意更新】 需要redis8.0 （因为其内置RedisJSON）
 
 
